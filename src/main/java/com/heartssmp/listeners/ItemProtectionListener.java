@@ -2,21 +2,14 @@ package com.heartssmp.listeners;
 
 import com.heartssmp.HeartsSMPPlugin;
 import com.heartssmp.managers.ItemManager;
-import org.bukkit.Material;
 import org.bukkit.event.*;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.*;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 
-/**
- * ItemProtectionListener — enforces bound item rules:
- *   • Non-droppable (Q key / death drop suppressed)
- *   • Non-placeable
- *   • Cannot be moved to other players
- *   • Passive effects require holding in main hand
- */
 public class ItemProtectionListener implements Listener {
 
     private final HeartsSMPPlugin plugin;
@@ -27,7 +20,6 @@ public class ItemProtectionListener implements Listener {
         this.itemManager = plugin.getItemManager();
     }
 
-    /** Prevent dropping bound items */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerDropItem(PlayerDropItemEvent event) {
         ItemStack dropped = event.getItemDrop().getItemStack();
@@ -37,7 +29,6 @@ public class ItemProtectionListener implements Listener {
         }
     }
 
-    /** Prevent placing custom items as blocks (e.g. lantern, pumpkin base items) */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
         ItemStack inHand = event.getItemInHand();
@@ -47,42 +38,36 @@ public class ItemProtectionListener implements Listener {
         }
     }
 
-    /** Prevent moving bound items in inventory (trading, hoppers through chests) */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getCurrentItem() != null && itemManager.isBoundItem(event.getCurrentItem())) {
-            // Allow moving within the player's own inventory, but block chest/crafting/trade moves
-            if (event.getInventory().getType() != org.bukkit.event.inventory.InventoryType.PLAYER &&
-                event.getInventory().getType() != org.bukkit.event.inventory.InventoryType.CRAFTING) {
+            if (event.getInventory().getType() != InventoryType.PLAYER
+                    && event.getInventory().getType() != InventoryType.CRAFTING) {
                 event.setCancelled(true);
             }
         }
         if (event.getCursor() != null && itemManager.isBoundItem(event.getCursor())) {
-            if (event.getInventory().getType() != org.bukkit.event.inventory.InventoryType.PLAYER &&
-                event.getInventory().getType() != org.bukkit.event.inventory.InventoryType.CRAFTING) {
+            if (event.getInventory().getType() != InventoryType.PLAYER
+                    && event.getInventory().getType() != InventoryType.CRAFTING) {
                 event.setCancelled(true);
             }
         }
     }
 
-    /** Prevent death drops of bound items */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerDeath(PlayerDeathEvent event) {
         event.getDrops().removeIf(item -> itemManager.isBoundItem(item));
     }
 
-    /** Prevent hoppers or dispensers picking up bound items */
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityPickup(EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof org.bukkit.entity.Player)) {
-            ItemStack item = event.getItem().getItemStack();
-            if (itemManager.isBoundItem(item)) {
+            if (itemManager.isBoundItem(event.getItem().getItemStack())) {
                 event.setCancelled(true);
             }
         }
     }
 
-    /** Prevent using bound items in crafting */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onCraft(CraftItemEvent event) {
         for (ItemStack ingredient : event.getInventory().getMatrix()) {
